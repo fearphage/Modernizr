@@ -22,7 +22,10 @@
 <script>
 	var start = +new Date();
 </script>
-<script src="modernizr.js"></script>
+<!--
+<script src="http://code.jquery.com/jquery-nightly.js"></script>
+-->
+<script src="modernizr.min.js"></script>
 
 
 
@@ -45,6 +48,22 @@ Modernizr._fontfaceready && Modernizr._fontfaceready(function(bool){
 
 
 document.write('At '+ (+new Date()) +', Modernizr took: '+ ((+new Date()) - start) + 'ms');
+
+/*
+Modernizr.addTest('datauri',function(){
+   
+    var data = new Image();
+    var is1px = function(){
+        return data.width == 1 && data.height == 1;
+    }
+    
+    data.onload = data.onerror = function(){
+    		Modernizr.datauri = 	is1px();
+    }
+    data.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+    Modernizr.datauri = 	is1px();
+});
+*/
 </script>
 
 	<h1>Modernizr</h1>
@@ -53,8 +72,8 @@ document.write('At '+ (+new Date()) +', Modernizr took: '+ ((+new Date()) - star
 <script>
 	for (var prop in Modernizr) {
 	  if (typeof Modernizr[prop] === 'function') continue;
-		if (prop == 'inputtypes') {
-			document.write('<li><b>Input types:</b><ul>');
+		if (prop == 'inputtypes' || prop == 'input') {
+			document.write('<li><b>'+prop+'{}</b><ul>');
 			for (var field in Modernizr[prop]) {
 				document.write('<li class="' + (Modernizr[prop][field] ? 'yes' : '') + '">' + field + ': ' + Modernizr[prop][field] + '</li>');
 			}

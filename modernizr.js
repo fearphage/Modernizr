@@ -1,5 +1,5 @@
 /*!
- * Modernizr JavaScript library 1.0c
+ * Modernizr JavaScript library 1.1
  * http://modernizr.com/
  *
  * Copyright (c) 2009 Faruk Ates - http://farukat.es/
@@ -69,7 +69,6 @@ window.Modernizr = (function(window,doc){
     fontfaceCheckDelay = 100,
     
     
-    doc = document,
     docElement = doc.documentElement,
 
     /**
@@ -79,7 +78,7 @@ window.Modernizr = (function(window,doc){
     m_style = m.style,
 
     /**
-     * Create the input element for various HTML5 feature tests.
+     * Create the input element for various Web Forms feature tests.
      */
     f = doc.createElement( 'input' ),
     
@@ -105,27 +104,28 @@ window.Modernizr = (function(window,doc){
     geolocation = 'geolocation',
     video = 'video',
     audio = 'audio',
-    inputtypes = 'inputtypes',
+    input = 'input',
+    inputtypes = input + 'types',
     // inputtypes is an object of its own containing individual tests for
     // various new input types, such as search, range, datetime, etc.
     
-    // SVG is not yet supported in Modernizr 1.0
+    // SVG is not yet supported in Modernizr
     // svg = 'svg',
     
     background = 'background',
     backgroundColor = background + 'Color',
     canPlayType = 'canPlayType',
     localStorage = 'localstorage',
+    sessionStorage = 'sessionstorage',
     webWorkers = 'webworkers',
-    offline = 'offline',
-    inputPlaceholders = 'inputplaceholders',
-    inputAutofocus = 'inputautofocus',
+    applicationCache = 'applicationcache',
     
-    // list of property values to set for css tests
+    // list of property values to set for css tests. see ticket #21
     setProperties = ' -o- -moz- -ms- -webkit- '.split(' '),
 
     tests = {},
     inputs = {},
+    attrs = {},
     
     elems,
     elem,
@@ -158,6 +158,7 @@ window.Modernizr = (function(window,doc){
     /**
      * test_props is a generic CSS / DOM property test; if a browser supports
      *   a certain property, it won't return undefined for it.
+     *   A supported CSS property returns empty string when its not yet set.
      */
     function test_props( props, callback ) {
         for ( var i in props ) {
@@ -186,8 +187,7 @@ window.Modernizr = (function(window,doc){
 
         return !!test_props( props, callback );
     }
-
-
+    
     // Tests
 
     /**
@@ -390,9 +390,9 @@ window.Modernizr = (function(window,doc){
           fontret = wid !== spn.offsetWidth;
       
           var delayedCheck = function(){
-            fontret = Modernizr[fontface] = wid !== spn.offsetWidth;
+            fontret = ret[fontface] = wid !== spn.offsetWidth;
             docElement.className = docElement.className.replace(/(no-)?font.*?\b/,'') + (fontret ? ' ' : ' no-') + fontface;
-        
+            
             callback && (isCallbackCalled = true) && callback(fontret);
             isFakeBody && setTimeout(function(){body.parentNode.removeChild(body)}, 50);
           }
@@ -423,7 +423,7 @@ window.Modernizr = (function(window,doc){
     
     tests[video] = function() {
         var elem = doc.createElement(video),
-            bool = elem[canPlayType];
+            bool = !!elem[canPlayType];
         
         if (bool){  
             bool      = new Boolean(bool);  
@@ -435,7 +435,7 @@ window.Modernizr = (function(window,doc){
     
     tests[audio] = function() {
         var elem = doc.createElement(audio),
-            bool = elem[canPlayType];
+            bool = !!elem[canPlayType];
         
         if (bool){  
             bool      = new Boolean(bool);  
@@ -451,26 +451,26 @@ window.Modernizr = (function(window,doc){
         return bool;
     };
 
+    // both localStorage and sessionStorage are
+    // tested in this method because otherwise Firefox will
+    //   throw an error: https://bugzilla.mozilla.org/show_bug.cgi?id=365772
+    // if cookies are disabled
     tests[localStorage] = function() {
-        return !!window.localStorage;
+        return 'localStorage' in window;
+    };
+
+    tests[sessionStorage] = function() {
+        return 'sessionStorage' in window;
     };
 
     tests[webWorkers] = function () {
         return !!window.Worker;
     };
 
-    tests[offline] =  function() {
+    tests[applicationCache] =  function() {
         return !!window.applicationCache;
     };
-
-    tests[inputPlaceholders] = function() {
-        return 'placeholder' in f;
-    };
-
-    tests[inputAutofocus] = function() {
-        return 'autofocus' in f;
-    };
-
+ 
 
     // Run through all tests and detect their support in the current UA.
     for ( feature in tests ) {
@@ -489,13 +489,25 @@ window.Modernizr = (function(window,doc){
      */
     ret.addTest = function (feature, test) {
       if (this.hasOwnProperty( feature )) {
-        // warn that feature is already in place
+        // warn that feature test is already present
       } 
       test = !!(test());
       docElement.className += ' ' + (!test && enableNoClasses ? 'no-' : '') + feature; 
-      ret[ feature ] = Modernizr[ feature ] = test;
+      ret[ feature ] = test;
     };
-
+    
+    // Run through HTML5's new input attributes to see if the UA understands any.
+    // We're using f which is the <input> element created early on
+    // Mike Taylr has created a comprehensive resource for testing these attributes
+    //   when applied to all input types: 
+    //   http://miketaylr.com/code/input-type-attr.html
+    // spec: http://www.whatwg.org/specs/web-apps/current-work/multipage/the-input-element.html#input-type-attr-summary
+    ret[input] = (function(props) {
+        for ( var i in props ) {
+            attrs[ props[i] ] = !!(props[i] in f);
+        }
+        return attrs;
+    })('autocomplete autofocus list placeholder max min multiple pattern required step'.split(' '));
 
     // Run through HTML5's new input types to see if the UA understands any.
     //   This is put behind the tests runloop because it doesn't return a
@@ -512,11 +524,6 @@ window.Modernizr = (function(window,doc){
 
     /**
      * Reset m.style.cssText to nothing to reduce memory footprint.
-     * Reset tmp, i and prop to null (in case they were used).
-     * 
-     * TODO: explore alternative approach where m.style.cssText is
-     *     set only once and we extract all data in one fell swoop.
-     *     Could prove to be a performance improvement.
      */
     set_css( '' );
     m = f = null;
@@ -541,7 +548,7 @@ window.Modernizr = (function(window,doc){
 
     // Add the new classes to the <html> element.
     docElement.className += ' ' + classes.join( ' ' );
-
+    
     return ret;
 
 })(this,this.document); 
