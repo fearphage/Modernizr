@@ -32,7 +32,9 @@
 
 window.Modernizr = (function(window,doc){
     
-    var ret = {},
+    var version = '1.2pre',
+    
+    ret = {},
 
     /**
      * enableHTML5 is a private property for advanced use only. If enabled,
@@ -110,7 +112,7 @@ window.Modernizr = (function(window,doc){
     // various new input types, such as search, range, datetime, etc.
     
     // SVG is not yet supported in Modernizr
-    // svg = 'svg',
+    svg = 'svg',
     
     background = 'background',
     backgroundColor = background + 'Color',
@@ -288,6 +290,10 @@ window.Modernizr = (function(window,doc){
             && isEventSupported('drop');
     };
     
+    tests[svg] = function(){
+        return !!(window.SVGAngle || doc.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1"));
+    };
+    
     tests[rgba] = function() {
         // Set an rgba() color and check the returned value
         
@@ -414,7 +420,29 @@ window.Modernizr = (function(window,doc){
     tests[csstransforms3d] = function() {
         //  set_css_all( 'perspective:500' );
         
-        return !!test_props([ 'perspectiveProperty', 'webkitPerspective', 'MozPerspective', 'mozPerspective', 'oPerspective', 'msPerspective' ]);
+        var ret = !!test_props([ 'perspectiveProperty', 'webkitPerspective', 'MozPerspective', 'mozPerspective', 'oPerspective', 'msPerspective' ]);
+        
+        // webkit has 3d transforms disabled for chrome and safari, though
+        //   it works fine in webkit nightly on (snow) leopard.
+        // as a result, it 'recognizes' the syntax and throws a false positive
+        // thus we must do a more thorough check:
+        if (ret){
+            var st = document.createElement('style'),
+                div = doc.createElement('div');
+                
+            // webkit allows this media query to succeed only if the feature is enabled.    
+            // "@media (transform-3d),(-o-transform-3d),(-moz-transform-3d),(-ms-transform-3d),(-webkit-transform-3d),(modernizr){#modernizr{height:3px}}"
+            st.textContent = '@media ('+setProperties.join('transform-3d),(')+'modernizr){#modernizr{height:3px}}';
+            doc.getElementsByTagName('head')[0].appendChild(st);
+            div.id = 'modernizr';
+            docElement.appendChild(div);
+            
+            ret = div.offsetHeight === 3;
+            
+            st.parentNode.removeChild(st);
+            div.parentNode.removeChild(div);
+        }
+        return ret;
     };
     
     tests[csstransitions] = function() {
@@ -579,7 +607,7 @@ window.Modernizr = (function(window,doc){
     //   http://miketaylr.com/code/input-type-attr.html
     // spec: http://www.whatwg.org/specs/web-apps/current-work/multipage/the-input-element.html#input-type-attr-summary
     ret[input] = (function(props) {
-        for ( var i in props ) {
+        for (var i = 0,len=props.length;i<len;i++) {
             attrs[ props[i] ] = !!(props[i] in f);
         }
         return attrs;
@@ -590,9 +618,9 @@ window.Modernizr = (function(window,doc){
     //   true/false like all the other tests; instead, it returns an object
     //   containing each input type with its corresponding true/false value 
     ret[inputtypes] = (function(props) {
-        for ( var i in props ) {
+        for (var i = 0,len=props.length;i<len;i++) {
             f.setAttribute('type', props[i]);
-            inputs[ props[i] ] = !!( f.type !== 'text');
+            inputs[ props[i] ] = f.type !== 'text';
         }
         return inputs;
     })('search tel url email datetime date month week time datetime-local number range color'.split(' '));
@@ -606,7 +634,7 @@ window.Modernizr = (function(window,doc){
 
     // Enable HTML 5 elements for styling in IE:
     if ( enableHTML5 && !(!/*@cc_on!@*/0) ) {
-        elems = 'abbr article aside audio canvas datalist details eventsource figure footer header hgroup mark menu meter nav output progress section time video'.split(' ');
+        elems = 'abbr article aside audio canvas datalist details figure footer header hgroup mark menu meter nav output progress ruby rt section time video'.split(' ');
 
         i = elems.length+1;
         while ( --i ) {
@@ -618,6 +646,7 @@ window.Modernizr = (function(window,doc){
     // Assign private properties to the return object with prefix
     ret._enableHTML5     = enableHTML5;
     ret._enableNoClasses = enableNoClasses;
+    ret._version         = version;
 
     // Remove "no-js" class from <html> element, if it exists:
     (function(H,C){H[C]=H[C].replace(/\bno-js\b/,'js')})(docElement,'className');
@@ -627,4 +656,4 @@ window.Modernizr = (function(window,doc){
     
     return ret;
 
-})(this,this.document); 
+})(this,this.document);
